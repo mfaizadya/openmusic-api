@@ -1,8 +1,14 @@
 require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
+const Inert = require('@hapi/inert');
+const path = require('path');
 const Jwt = require('@hapi/jwt');
 const ClientError = require('./exceptions/ClientError');
+
+const CacheService = require('./services/redis/CacheService');
+const StorageService = require('./services/storage/StorageService');
+const ProducerService = require('./services/rabbitmq/ProducerService');
 
 const albums = require('./api/albums');
 const AlbumsService = require('./services/postgres/AlbumsService');
@@ -32,10 +38,12 @@ const CollaborationsValidator = require('./validator/collaborations');
 const init = async () => {
   const collaborationsService = new CollaborationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
-  const albumsService = new AlbumsService();
+  const albumsService = new AlbumsService(pool, cacheService);
   const songsService = new SongsService();
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
+  const cacheService = new CacheService();
+  const storageService = new StorageService(path.resolve(__dirname, 'api/uploads/file/images'));
 
   const server = Hapi.server({
     port: process.env.PORT,
@@ -50,6 +58,9 @@ const init = async () => {
   await server.register([
     {
       plugin: Jwt,
+    },
+    {
+      plugin: Inert,
     },
   ]);
 
@@ -106,6 +117,8 @@ const init = async () => {
       options: {
         service: albumsService,
         validator: AlbumsValidator,
+        storageService,
+        uploadValidator: UploadsValidator,
       },
     },
     {
@@ -115,7 +128,25 @@ const init = async () => {
         validator: SongsValidator,
       },
     },
+    {
+      plugin: exports,
+      options: {
+        service: ProducerService,
+        validator: ExportsValidator,
+        playlistsService,
+      }
+    }
   ]);
+
+  server.route({
+    method: 'GET',
+    path: '/uploads/{param*}',
+    handler: {
+      directory: {
+        path: path.resolve(__dirname, 'api/uploads/file'),
+      },
+    },
+  })
 
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;

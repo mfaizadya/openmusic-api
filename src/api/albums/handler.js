@@ -1,7 +1,9 @@
 class AlbumsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, storageService, uploadValidator ) {
     this._service = service;
     this._validator = validator;
+    this._storageService = storageService;
+    this._uploadValidator = uploadValidator;
 
     this.postAlbumHandler = this.postAlbumHandler.bind(this);
     this.getAlbumByIdHandler = this.getAlbumByIdHandler.bind(this);
@@ -57,6 +59,73 @@ class AlbumsHandler {
       status: 'success',
       message: 'Album berhasil dihapus',
     };
+  }
+
+  async postUploadCoverHandler(request, h) {
+    const { id } = request.params;
+    const { cover } = request.payload;
+    
+    // Validasi tipe konten dan ukuran
+    this._uploadValidator.validateImageHeaders(cover.hapi.headers);
+
+    // Simpan file
+    const filename = await this._storageService.writeFile(cover, cover.hapi);
+    
+    // Sesuaikan URL (asumsi localhost)
+    const coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
+    
+    // Update database
+    await this._service.addCoverAlbumById(id, coverUrl);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Sampul berhasil diunggah',
+    });
+    response.code(201);
+    return response;
+  }
+
+  async postLikeHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._service.addLikeAlbum(credentialId, albumId);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Menyukai album',
+    });
+    response.code(201);
+    return response;
+  }
+
+  async deleteLikeHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._service.deleteLikeAlbum(credentialId, albumId);
+
+    return {
+      status: 'success',
+      message: 'Batal menyukai album',
+    };
+  }
+
+  async getLikesHandler(request, h) {
+    const { id: albumId } = request.params;
+    
+    const { count, isCache } = await this._service.getLikesCount(albumId);
+
+    const response = h.response({
+      status: 'success',
+      data: { likes: count },
+    });
+
+    if (isCache) {
+      response.header('X-Data-Source', 'cache');
+    }
+
+    return response;
   }
 }
 

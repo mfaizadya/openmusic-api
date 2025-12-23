@@ -4,8 +4,9 @@ const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 
 class AlbumsService {
-  constructor() {
-    this._pool = new Pool();
+  constructor(pool, cacheService) {
+    this._pool = pool;
+    this._cacheService = cacheService;
   }
 
   async addAlbum({ name, year }) {
@@ -74,6 +75,94 @@ class AlbumsService {
     if (!result.rows.length) {
       throw new NotFoundError('Album gagal dihapus. Id tidak ditemukan');
     }
+  }
+
+  async addCoverAlbumById(id, coverUrl) {
+    const query = {
+      text: 'UPDATE albums SET cover_url = $1 WHERE id = $2 RETURNING id',
+      values: [coverUrl, id],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new NotFoundError('Gagal memperbarui cover. Id tidak ditemukan');
+    }
+  }
+
+  async addLikeAlbum(userId, albumId) {
+    // Cek apakah album ada
+    await this.getAlbumById(albumId); 
+    
+    // Cek apakah sudah like (bisa ditangani constraint DB, tapi pengecekan manual memberikan error message lebih jelas)
+    const checkQuery = {
+        text: 'SELECT id FROM user_album_likes WHERE user_id = $1 AND album_id = $2',
+        values: [userId, albumId],
+    };
+    const checkResult = await this._pool.query(checkQuery);
+    if (checkResult.rowCount > 0) {
+        throw new InvariantError('Gagal menyukai album. Anda sudah menyukai album ini.');
+    }
+
+    const id = `like-${nanoid(16)}`;
+    const query = {
+      text: 'INSERT INTO user_album_likes VALUES($1, $2, $3) RETURNING id',
+      values: [id, userId, albumId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows[0].id) {
+      throw new InvariantError('Gagal menyukai album');
+    }
+
+    // Hapus Cache
+    await this._cacheService.delete(`likes:${albumId}`);
+  }
+
+  async deleteLikeAlbum(userId, albumId) {
+    const query = {
+      text: 'DELETE FROM user_album_likes WHERE user_id = $1 AND album_id = $2 RETURNING id',
+      values: [userId, albumId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw new NotFoundError('Gagal membatalkan like. Like tidak ditemukan');
+    }
+
+    // Hapus Cache
+    await this._cacheService.delete(`likes:${albumId}`);
+  }
+
+  async getLikesCount(albumId) {
+    try {
+      // Coba ambil dari cache
+      const result = await this._cacheService.get(`likes:${albumId}`);
+      if (result) {
+        return { count: JSON.parse(result), isCache: true };
+      }
+    } catch (error) {
+        // Abaikan error cache, lanjut ke DB
+    }
+
+    // Jika tidak ada di cache, ambil dari DB
+    // Pastikan album ada
+    await this.getAlbumById(albumId);
+
+    const query = {
+      text: 'SELECT COUNT(*) FROM user_album_likes WHERE album_id = $1',
+      values: [albumId],
+    };
+
+    const result = await this._pool.query(query);
+    const count = parseInt(result.rows[0].count, 10);
+
+    // Simpan ke cache
+    await this._cacheService.set(`likes:${albumId}`, JSON.stringify(count));
+
+    return { count, isCache: false };
   }
 }
 
