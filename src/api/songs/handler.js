@@ -3,7 +3,6 @@ class SongsHandler {
     this._service = service;
     this._validator = validator;
 
-    // Binding this context agar tidak lepas saat dipanggil route
     this.postSongHandler = this.postSongHandler.bind(this);
     this.getSongsHandler = this.getSongsHandler.bind(this);
     this.getSongByIdHandler = this.getSongByIdHandler.bind(this);
@@ -12,14 +11,12 @@ class SongsHandler {
   }
 
   async postSongHandler(request, h) {
-    // Validasi payload
     this._validator.validateSongPayload(request.payload);
 
     const {
       title, year, genre, performer, duration, albumId,
     } = request.payload;
 
-    // Panggil service
     const songId = await this._service.addSong({
       title, year, genre, performer, duration, albumId,
     });
@@ -35,8 +32,10 @@ class SongsHandler {
     return response;
   }
 
-  async getSongsHandler() {
-    const songs = await this._service.getSongs();
+  async getSongsHandler(request) {
+    const { title = '', performer = '' } = request.query;
+    
+    const songs = await this._service.getSongs(title, performer);
     return {
       status: 'success',
       data: {
