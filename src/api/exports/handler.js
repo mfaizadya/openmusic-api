@@ -2,9 +2,9 @@ const autoBind = require('auto-bind');
 
 class ExportsHandler {
   constructor(service, validator, playlistsService) {
-    this._service = service; // ProducerService
+    this._service = service;
     this._validator = validator;
-    this._playlistsService = playlistsService; // Untuk verifikasi owner
+    this._playlistsService = playlistsService;
 
     autoBind(this);
   }
@@ -16,7 +16,6 @@ class ExportsHandler {
     const { targetEmail } = request.payload;
     const { id: credentialId } = request.auth.credentials;
 
-    // Verifikasi kepemilikan playlist
     await this._playlistsService.verifyPlaylistOwner(playlistId, credentialId);
 
     const message = {

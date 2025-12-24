@@ -65,16 +65,11 @@ class AlbumsHandler {
     const { id } = request.params;
     const { cover } = request.payload;
     
-    // Validasi tipe konten dan ukuran
     this._uploadValidator.validateImageHeaders(cover.hapi.headers);
 
-    // Simpan file
     const filename = await this._storageService.writeFile(cover, cover.hapi);
+        const coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
     
-    // Sesuaikan URL (asumsi localhost)
-    const coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${filename}`;
-    
-    // Update database
     await this._service.addCoverAlbumById(id, coverUrl);
 
     const response = h.response({

@@ -1,35 +1,44 @@
 {
-  "name": "openmusic-api",
-  "version": "1.0.0",
-  "description": "",
+  "name": "openmusic-api-v3",
+  "version": "3.0.0",
+  "description": "OpenMusic API Version 3 with Export, Upload, and Likes features",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "start-dev": "nodemon src/server.js",
-    "lint": "eslint ./src",
-    "migrate": "node-pg-migrate"
+    "start-consumer": "nodemon src/consumer.js",
+    "migrate": "node-pg-migrate",
+    "lint": "eslint ./src"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "hapi",
+    "music",
+    "api",
+    "postgres",
+    "redis",
+    "rabbitmq"
+  ],
+  "author": "Your Name",
   "license": "ISC",
   "dependencies": {
-    "@hapi/hapi": "^21.4.4",
+    "@hapi/hapi": "^21.3.2",
     "@hapi/inert": "^7.1.0",
-    "@hapi/jwt": "^3.2.3",
+    "@hapi/jwt": "^3.2.0",
     "amqplib": "^0.10.9",
-    "auto-bind": "^5.0.1",
-    "bcrypt": "^6.0.0",
-    "dotenv": "^17.2.3",
-    "joi": "^18.0.1",
-    "nanoid": "^3.3.11",
-    "node-pg-migrate": "^8.0.3",
-    "pg": "^8.16.3",
-    "redis": "^5.10.0"
+    "auto-bind": "^4.0.0",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0",
+    "nanoid": "^3.3.7",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.11.3",
+    "redis": "^4.6.11"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
+    "eslint": "^8.54.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.32.0",
-    "nodemon": "^3.1.11"
+    "eslint-plugin-import": "^2.29.0",
+    "node-pg-migrate": "^6.2.2",
+    "nodemon": "^3.0.2"
   }
 }
